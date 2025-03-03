@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  mqtt:
+    image: eclipse-mosquitto:latest
+    entrypoint: mosquitto
+    command: -c /mosquitto-no-auth.conf
+    ports:
+      - "1883:1883"
+
+  yokai:
+    image: yokai:main
+    depends_on:
+      - mqtt
+    environment:
+      YOKAI_BROKER: mqtt:1883
+      YOKAI_APP_SOURCE: /src/home.jsonnet
+    volumes:
+      - ./${TEST_FOLDER}:/src
+
+  input-a:
+    image: hivemq/mqtt-cli
+    command: sub -h mqtt -t yokai/test/input-a
+    depends_on:
+      - mqtt
+
+  output:
+    image: hivemq/mqtt-cli
+    command: sub -h mqtt -t yokai/test/output
+    depends_on:
+      - mqtt
