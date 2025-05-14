@@ -25,8 +25,8 @@ func run() error {
 		SetClientID("yokai").
 		SetKeepAlive(2 * time.Second).
 		SetPingTimeout(1 * time.Second))
-	appSource := NewAppSource(os.Getenv("YOKAI_APP_SOURCE"))
-	controller := NewController(client, appSource)
+	appConfig := NewAppConfig(os.Getenv("YOKAI_APP_CONFIG"))
+	controller := NewController(client, appConfig)
 
 	err := controller.run()
 	if err != nil {
@@ -37,16 +37,16 @@ func run() error {
 
 type Controller struct {
 	client    mqtt.Client
-	appSource AppSource
+	appConfig AppConfig
 }
 
 func NewController(
 	client mqtt.Client,
-	appSource AppSource,
+	appConfig AppConfig,
 ) Controller {
 	return Controller{
 		client:    client,
-		appSource: appSource,
+		appConfig: appConfig,
 	}
 }
 
@@ -121,7 +121,7 @@ func (c Controller) configureDelay() error {
 }
 
 func (c Controller) configureApps() error {
-	apps, err := c.appSource.listApps()
+	apps, err := c.appConfig.listApps()
 	if err != nil {
 		return err
 	}
@@ -150,7 +150,7 @@ func (c Controller) configureApps() error {
 		appIndices := topicToAppIndices[msg.Topic()]
 		for _, index := range appIndices {
 			model := models[index]
-			updates, err := c.appSource.update(index, topic, model, payload)
+			updates, err := c.appConfig.update(index, topic, model, payload)
 			if err != nil {
 				log.Error(err)
 				continue
@@ -180,12 +180,12 @@ func (c Controller) configureApps() error {
 	return nil
 }
 
-type AppSource struct {
+type AppConfig struct {
 	path string
 }
 
-func NewAppSource(path string) AppSource {
-	return AppSource{
+func NewAppConfig(path string) AppConfig {
+	return AppConfig{
 		path: path,
 	}
 }
@@ -196,7 +196,7 @@ type AppData struct {
 	Subscriptions []string `json:"subscriptions"`
 }
 
-func (a AppSource) listApps() ([]AppData, error) {
+func (a AppConfig) listApps() ([]AppData, error) {
 	var apps []AppData
 	err := evaluateAndUnmarshal("apps", fmt.Sprintf(`
 		local apps = import "%s";
@@ -212,7 +212,7 @@ func (a AppSource) listApps() ([]AppData, error) {
 	return apps, nil
 }
 
-func (a AppSource) update(index int, topic string, model any, payload any) (map[string]any, error) {
+func (a AppConfig) update(index int, topic string, model any, payload any) (map[string]any, error) {
 	var update map[string]any
 	err := evaluateAndUnmarshal("update", fmt.Sprintf(`
 		local apps = import "%s";
