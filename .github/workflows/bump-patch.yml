@@ -3,6 +3,9 @@ name: Bump Patch Version
 on:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   bump:
     runs-on: ubuntu-latest
