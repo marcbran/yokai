@@ -1,0 +1,31 @@
+name: Bump Patch Version
+
+on:
+  workflow_dispatch:
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+      - name: Get latest version
+        id: get_version
+        run: |
+          if ! git describe --tags --abbrev=0 2>/dev/null; then
+            echo "new_version=v0.0.1" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          LATEST_TAG=$(git describe --tags --abbrev=0)
+          MAJOR=$(echo $LATEST_TAG | cut -d. -f1 | tr -d 'v')
+          MINOR=$(echo $LATEST_TAG | cut -d. -f2)
+          PATCH=$(echo $LATEST_TAG | cut -d. -f3)
+          NEW_PATCH=$((PATCH + 1))
+          echo "new_version=v$MAJOR.$MINOR.$NEW_PATCH" >> $GITHUB_OUTPUT
+      - name: Create new tag
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git tag ${{ steps.get_version.outputs.new_version }}
+          git push origin ${{ steps.get_version.outputs.new_version }}
