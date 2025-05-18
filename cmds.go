@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"time"
 
@@ -25,7 +26,7 @@ type Delay struct {
 	Message      any
 }
 
-func (d DelayHandler) Handle(topic string, payload string) (map[string]string, error) {
+func (d DelayHandler) Handle(ctx context.Context, topic string, payload string) (map[string]string, error) {
 	var delay Delay
 	err := json.Unmarshal([]byte(payload), &delay)
 	if err != nil {
@@ -34,7 +35,11 @@ func (d DelayHandler) Handle(topic string, payload string) (map[string]string, e
 
 	log.WithField("milliseconds", delay.Milliseconds).
 		Info("sleeping")
-	time.Sleep(time.Duration(delay.Milliseconds) * time.Millisecond)
+	select {
+	case <-time.After(time.Duration(delay.Milliseconds) * time.Millisecond):
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
 
 	message, err := json.Marshal(delay.Message)
 	if err != nil {

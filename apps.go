@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"sync"
@@ -40,7 +41,7 @@ type AppHandler struct {
 	appConfig AppConfig
 }
 
-func (a AppHandler) Handle(topic string, payload string) (map[string]string, error) {
+func (a AppHandler) Handle(ctx context.Context, topic string, payload string) (map[string]string, error) {
 	model, ok := a.models.Load(a.index)
 	if !ok {
 		return nil, fmt.Errorf("model not found for app %d", a.index)

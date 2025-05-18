@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"os"
 	"time"
 
@@ -9,14 +10,15 @@ import (
 )
 
 func main() {
+	ctx := context.Background()
 	log.SetFormatter(&log.JSONFormatter{})
-	err := run()
+	err := run(ctx)
 	if err != nil {
 		panic(err)
 	}
 }
 
-func run() error {
+func run(ctx context.Context) error {
 	appConfig := AppConfig{os.Getenv("YOKAI_APP_CONFIG")}
 	registrations := []Registration{
 		AppRegistration{appConfig},
@@ -36,7 +38,7 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	err = controller.run(topicToHandlers)
+	err = controller.run(ctx, topicToHandlers)
 	if err != nil {
 		return err
 	}
@@ -48,7 +50,7 @@ type Registration interface {
 }
 
 type Handler interface {
-	Handle(topic string, payload string) (map[string]string, error)
+	Handle(ctx context.Context, topic string, payload string) (map[string]string, error)
 }
 
 type CompoundRegistration struct {
