@@ -16,7 +16,12 @@ docker-build name suffix="" dockerfile="./Dockerfile" context=".":
 
 build: (docker-build "yokai")
 
-it: build
+build-snapshot:
+    #!/usr/bin/env bash
+    set -eu
+    goreleaser release --snapshot --clean
+
+it: build-snapshot
     #!/usr/bin/env bash
     set -eu
     cd it

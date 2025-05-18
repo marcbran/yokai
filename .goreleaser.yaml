@@ -30,10 +30,12 @@ archives:
 
 dockers:
   - image_templates:
-      - "ghcr.io/marcbran/yokai:v{{ .Major }}"
-      - "ghcr.io/marcbran/yokai:v{{ .Major }}.{{ .Minor }}"
-      - "ghcr.io/marcbran/yokai:{{ .Tag }}"
-      - "ghcr.io/marcbran/yokai:latest"
+      - "{{ if not .IsSnapshot }}ghcr.io/marcbran/yokai:{{ .Tag }}{{ end }}"
+      - "{{ if not .IsSnapshot }}ghcr.io/marcbran/yokai:{{ .Major }}{{ end }}"
+      - "{{ if not .IsSnapshot }}ghcr.io/marcbran/yokai:{{ .Major }}.{{ .Minor }}{{ end }}"
+      - "{{ if not .IsSnapshot }}ghcr.io/marcbran/yokai:latest{{ end }}"
+      - "{{ if .IsSnapshot }}ghcr.io/marcbran/yokai:{{ .Tag }}-SNAPSHOT{{ end }}"
+      - "{{ if .IsSnapshot }}ghcr.io/marcbran/yokai:dev{{ end }}"
 
 changelog:
   sort: asc

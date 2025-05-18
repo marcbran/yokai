@@ -9,12 +9,12 @@ services:
       - "1883:1883"
 
   yokai:
-    image: yokai:main
+    image: ghcr.io/marcbran/yokai:dev
     depends_on:
       - mqtt
     environment:
       YOKAI_BROKER: mqtt:1883
-      YOKAI_APP_SOURCE: /src/home.jsonnet
+      YOKAI_APP_CONFIG: /src/home.jsonnet
     volumes:
       - ./${TEST_FOLDER}:/src
 
