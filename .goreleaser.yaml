@@ -57,28 +57,20 @@ dockers:
 docker_manifests:
   - name_template: ghcr.io/marcbran/{{ .ProjectName }}:{{ .Tag }}
     image_templates:
-      - "{{ if not .IsSnapshot }}ghcr.io/marcbran/{{ .ProjectName }}:{{ .Tag }}-amd64{{ end }}"
-      - "{{ if not .IsSnapshot }}ghcr.io/marcbran/{{ .ProjectName }}:{{ .Tag }}-arm64v8{{ end }}"
+      - "ghcr.io/marcbran/{{ .ProjectName }}:{{ .Tag }}-amd64"
+      - "ghcr.io/marcbran/{{ .ProjectName }}:{{ .Tag }}-arm64v8"
   - name_template: ghcr.io/marcbran/{{ .ProjectName }}:{{ .Major }}
     image_templates:
-      - "{{ if not .IsSnapshot }}ghcr.io/marcbran/{{ .ProjectName }}:{{ .Major }}-amd64{{ end }}"
-      - "{{ if not .IsSnapshot }}ghcr.io/marcbran/{{ .ProjectName }}:{{ .Major }}-arm64v8{{ end }}"
+      - "ghcr.io/marcbran/{{ .ProjectName }}:{{ .Major }}-amd64"
+      - "ghcr.io/marcbran/{{ .ProjectName }}:{{ .Major }}-arm64v8"
   - name_template: ghcr.io/marcbran/{{ .ProjectName }}:{{ .Major }}.{{ .Minor }}
     image_templates:
-      - "{{ if not .IsSnapshot }}ghcr.io/marcbran/{{ .ProjectName }}:{{ .Major }}.{{ .Minor }}-amd64{{ end }}"
-      - "{{ if not .IsSnapshot }}ghcr.io/marcbran/{{ .ProjectName }}:{{ .Major }}.{{ .Minor }}-arm64v8{{ end }}"
+      - "ghcr.io/marcbran/{{ .ProjectName }}:{{ .Major }}.{{ .Minor }}-amd64"
+      - "ghcr.io/marcbran/{{ .ProjectName }}:{{ .Major }}.{{ .Minor }}-arm64v8"
   - name_template: ghcr.io/marcbran/{{ .ProjectName }}:latest
     image_templates:
-      - "{{ if not .IsSnapshot }}ghcr.io/marcbran/{{ .ProjectName }}:latest-amd64{{ end }}"
-      - "{{ if not .IsSnapshot }}ghcr.io/marcbran/{{ .ProjectName }}:latest-arm64v8{{ end }}"
-  - name_template: ghcr.io/marcbran/{{ .ProjectName }}:{{ .Tag }}-SNAPSHOT
-    image_templates:
-      - "{{ if .IsSnapshot }}ghcr.io/marcbran/{{ .ProjectName }}:{{ .Tag }}-SNAPSHOT-amd64{{ end }}"
-      - "{{ if .IsSnapshot }}ghcr.io/marcbran/{{ .ProjectName }}:{{ .Tag }}-SNAPSHOT-arm64v8{{ end }}"
-  - name_template: ghcr.io/marcbran/{{ .ProjectName }}:dev
-    image_templates:
-      - "{{ if .IsSnapshot }}ghcr.io/marcbran/{{ .ProjectName }}:dev-amd64{{ end }}"
-      - "{{ if .IsSnapshot }}ghcr.io/marcbran/{{ .ProjectName }}:dev-arm64v8{{ end }}"
+      - "ghcr.io/marcbran/{{ .ProjectName }}:latest-amd64"
+      - "ghcr.io/marcbran/{{ .ProjectName }}:latest-arm64v8"
 
 changelog:
   sort: asc
