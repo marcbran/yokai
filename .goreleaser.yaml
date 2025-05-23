@@ -14,6 +14,9 @@ builds:
       - linux
       - windows
       - darwin
+    goarch:
+      - amd64
+      - arm64
 
 archives:
   - formats: [tar.gz]
@@ -30,12 +33,52 @@ archives:
 
 dockers:
   - image_templates:
-      - "{{ if not .IsSnapshot }}ghcr.io/marcbran/yokai:{{ .Tag }}{{ end }}"
-      - "{{ if not .IsSnapshot }}ghcr.io/marcbran/yokai:{{ .Major }}{{ end }}"
-      - "{{ if not .IsSnapshot }}ghcr.io/marcbran/yokai:{{ .Major }}.{{ .Minor }}{{ end }}"
-      - "{{ if not .IsSnapshot }}ghcr.io/marcbran/yokai:latest{{ end }}"
-      - "{{ if .IsSnapshot }}ghcr.io/marcbran/yokai:{{ .Tag }}-SNAPSHOT{{ end }}"
-      - "{{ if .IsSnapshot }}ghcr.io/marcbran/yokai:dev{{ end }}"
+      - "{{ if not .IsSnapshot }}ghcr.io/marcbran/{{ .ProjectName }}:{{ .Tag }}-amd64{{ end }}"
+      - "{{ if not .IsSnapshot }}ghcr.io/marcbran/{{ .ProjectName }}:{{ .Major }}-amd64{{ end }}"
+      - "{{ if not .IsSnapshot }}ghcr.io/marcbran/{{ .ProjectName }}:{{ .Major }}.{{ .Minor }}-amd64{{ end }}"
+      - "{{ if not .IsSnapshot }}ghcr.io/marcbran/{{ .ProjectName }}:latest-amd64{{ end }}"
+      - "{{ if .IsSnapshot }}ghcr.io/marcbran/{{ .ProjectName }}:{{ .Tag }}-SNAPSHOT-amd64{{ end }}"
+      - "{{ if .IsSnapshot }}ghcr.io/marcbran/{{ .ProjectName }}:dev-amd64{{ end }}"
+    goarch: amd64
+    use: buildx
+    build_flag_templates:
+      - "--platform=linux/amd64"
+  - image_templates:
+      - "{{ if not .IsSnapshot }}ghcr.io/marcbran/{{ .ProjectName }}:{{ .Tag }}-arm64v8{{ end }}"
+      - "{{ if not .IsSnapshot }}ghcr.io/marcbran/{{ .ProjectName }}:{{ .Major }}-arm64v8{{ end }}"
+      - "{{ if not .IsSnapshot }}ghcr.io/marcbran/{{ .ProjectName }}:{{ .Major }}.{{ .Minor }}-arm64v8{{ end }}"
+      - "{{ if not .IsSnapshot }}ghcr.io/marcbran/{{ .ProjectName }}:latest-arm64v8{{ end }}"
+      - "{{ if .IsSnapshot }}ghcr.io/marcbran/{{ .ProjectName }}:{{ .Tag }}-SNAPSHOT-arm64v8{{ end }}"
+      - "{{ if .IsSnapshot }}ghcr.io/marcbran/{{ .ProjectName }}:dev-arm64v8{{ end }}"
+    goarch: arm64
+    use: buildx
+    build_flag_templates:
+      - "--platform=linux/arm64/v8"
+docker_manifests:
+  - name_template: ghcr.io/marcbran/{{ .ProjectName }}:{{ .Tag }}
+    image_templates:
+      - "{{ if not .IsSnapshot }}ghcr.io/marcbran/{{ .ProjectName }}:{{ .Tag }}-amd64{{ end }}"
+      - "{{ if not .IsSnapshot }}ghcr.io/marcbran/{{ .ProjectName }}:{{ .Tag }}-arm64v8{{ end }}"
+  - name_template: ghcr.io/marcbran/{{ .ProjectName }}:{{ .Major }}
+    image_templates:
+      - "{{ if not .IsSnapshot }}ghcr.io/marcbran/{{ .ProjectName }}:{{ .Major }}-amd64{{ end }}"
+      - "{{ if not .IsSnapshot }}ghcr.io/marcbran/{{ .ProjectName }}:{{ .Major }}-arm64v8{{ end }}"
+  - name_template: ghcr.io/marcbran/{{ .ProjectName }}:{{ .Major }}.{{ .Minor }}
+    image_templates:
+      - "{{ if not .IsSnapshot }}ghcr.io/marcbran/{{ .ProjectName }}:{{ .Major }}.{{ .Minor }}-amd64{{ end }}"
+      - "{{ if not .IsSnapshot }}ghcr.io/marcbran/{{ .ProjectName }}:{{ .Major }}.{{ .Minor }}-arm64v8{{ end }}"
+  - name_template: ghcr.io/marcbran/{{ .ProjectName }}:latest
+    image_templates:
+      - "{{ if not .IsSnapshot }}ghcr.io/marcbran/{{ .ProjectName }}:latest-amd64{{ end }}"
+      - "{{ if not .IsSnapshot }}ghcr.io/marcbran/{{ .ProjectName }}:latest-arm64v8{{ end }}"
+  - name_template: ghcr.io/marcbran/{{ .ProjectName }}:{{ .Tag }}-SNAPSHOT
+    image_templates:
+      - "{{ if .IsSnapshot }}ghcr.io/marcbran/{{ .ProjectName }}:{{ .Tag }}-SNAPSHOT-amd64{{ end }}"
+      - "{{ if .IsSnapshot }}ghcr.io/marcbran/{{ .ProjectName }}:{{ .Tag }}-SNAPSHOT-arm64v8{{ end }}"
+  - name_template: ghcr.io/marcbran/{{ .ProjectName }}:dev
+    image_templates:
+      - "{{ if .IsSnapshot }}ghcr.io/marcbran/{{ .ProjectName }}:dev-amd64{{ end }}"
+      - "{{ if .IsSnapshot }}ghcr.io/marcbran/{{ .ProjectName }}:dev-arm64v8{{ end }}"
 
 changelog:
   sort: asc
