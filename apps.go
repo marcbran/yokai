@@ -22,7 +22,7 @@ func (a AppRegistration) Register() (map[string][]Handler, error) {
 	var models sync.Map
 	topicToHandlers := make(map[string][]Handler)
 	for i, app := range apps {
-		models.Store(i, app.Model)
+		models.Store(i, app.Init)
 		for _, topic := range app.Subscriptions {
 			topicToHandlers[topic] = append(topicToHandlers[topic], AppHandler{
 				index:     i,
@@ -47,7 +47,7 @@ func (a AppHandler) Handle(ctx context.Context, topic string, payload string) (m
 		return nil, fmt.Errorf("model not found for app %d", a.index)
 	}
 
-	updates, err := a.appConfig.update(a.index, topic, model, payload)
+	updates, err := a.appConfig.update(a.index, topic, payload, model)
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +80,6 @@ func NewAppConfig(path string) AppConfig {
 }
 
 type AppData struct {
-	Model         string   `json:"model"`
 	Init          any      `json:"init"`
 	Subscriptions []string `json:"subscriptions"`
 }
@@ -90,7 +89,6 @@ func (a AppConfig) listApps() ([]AppData, error) {
 	err := evaluateAndUnmarshal("apps", fmt.Sprintf(`
 		local apps = import "%s";
 		std.map(function (app) {
-			model: std.get(app.app, "model", ""),
 			init: std.get(app.app, "init", ""),
 			subscriptions: std.get(app.app, "subscriptions", []),
 		}, apps)
@@ -101,16 +99,20 @@ func (a AppConfig) listApps() ([]AppData, error) {
 	return apps, nil
 }
 
-func (a AppConfig) update(index int, topic string, model any, payload any) (map[string]any, error) {
+func (a AppConfig) update(index int, topic string, payload string, model any) (map[string]any, error) {
 	var update map[string]any
-	err := evaluateAndUnmarshal("update", fmt.Sprintf(`
+	jsonModel, err := json.Marshal(model)
+	if err != nil {
+		return nil, err
+	}
+	err = evaluateAndUnmarshal("update", fmt.Sprintf(`
 		local apps = import "%s";
 		local index = %d;
 		local topic = "%s";
-		local model = "%s";
+		local model = %s;
 		local payload = %s;
 		apps[index].app.update[topic](model, payload)
-	`, a.path, index, topic, model, payload), &update)
+	`, a.path, index, topic, jsonModel, payload), &update)
 	if err != nil {
 		return nil, err
 	}

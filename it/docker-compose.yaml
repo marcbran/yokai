@@ -9,7 +9,7 @@ services:
       - "1883:1883"
 
   yokai:
-    image: ghcr.io/marcbran/yokai:dev
+    image: ghcr.io/marcbran/yokai:dev-arm64v8
     depends_on:
       - mqtt
     environment:
