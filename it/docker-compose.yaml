@@ -12,6 +12,7 @@ services:
     image: ghcr.io/marcbran/yokai:dev-arm64v8
     depends_on:
       - mqtt
+    command: run
     environment:
       YOKAI_BROKER: mqtt:1883
       YOKAI_APP_CONFIG: /src/home.jsonnet
