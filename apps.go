@@ -21,11 +21,11 @@ func (a AppRegistration) Register() (map[string][]Handler, error) {
 
 	var models sync.Map
 	topicToHandlers := make(map[string][]Handler)
-	for i, app := range apps {
-		models.Store(i, app.Init)
+	for key, app := range apps {
+		models.Store(key, app.Init)
 		for _, topic := range app.Subscriptions {
 			topicToHandlers[topic] = append(topicToHandlers[topic], AppHandler{
-				index:     i,
+				key:       key,
 				models:    &models,
 				appConfig: a.appConfig,
 			})
@@ -36,23 +36,23 @@ func (a AppRegistration) Register() (map[string][]Handler, error) {
 }
 
 type AppHandler struct {
-	index     int
+	key       string
 	models    *sync.Map
 	appConfig AppConfig
 }
 
 func (a AppHandler) Handle(ctx context.Context, topic string, payload string) (map[string]string, error) {
-	model, ok := a.models.Load(a.index)
+	model, ok := a.models.Load(a.key)
 	if !ok {
-		return nil, fmt.Errorf("model not found for app %d", a.index)
+		return nil, fmt.Errorf("model not found for app %s", a.key)
 	}
 
-	updates, err := a.appConfig.update(a.index, topic, payload, model)
+	updates, err := a.appConfig.update(a.key, topic, payload, model)
 	if err != nil {
 		return nil, err
 	}
 
-	a.models.Store(a.index, updates["model"])
+	a.models.Store(a.key, updates["model"])
 
 	outputs := make(map[string]string)
 	for topic, payload := range updates {
@@ -84,11 +84,11 @@ type AppData struct {
 	Subscriptions []string `json:"subscriptions"`
 }
 
-func (a AppConfig) listApps() ([]AppData, error) {
-	var apps []AppData
+func (a AppConfig) listApps() (map[string]AppData, error) {
+	var apps map[string]AppData
 	err := evaluateAndUnmarshal("apps", fmt.Sprintf(`
 		local apps = import "%s";
-		std.map(function (app) {
+		std.mapWithKey(function (key, app) {
 			init: std.get(app.app, "init", ""),
 			subscriptions: std.get(app.app, "subscriptions", []),
 		}, apps)
@@ -99,7 +99,7 @@ func (a AppConfig) listApps() ([]AppData, error) {
 	return apps, nil
 }
 
-func (a AppConfig) update(index int, topic string, payload string, model any) (map[string]any, error) {
+func (a AppConfig) update(key string, topic string, payload string, model any) (map[string]any, error) {
 	var update map[string]any
 	jsonModel, err := json.Marshal(model)
 	if err != nil {
@@ -107,12 +107,12 @@ func (a AppConfig) update(index int, topic string, payload string, model any) (m
 	}
 	err = evaluateAndUnmarshal("update", fmt.Sprintf(`
 		local apps = import "%s";
-		local index = %d;
+		local key = "%s";
 		local topic = "%s";
 		local model = %s;
 		local payload = %s;
-		apps[index].app.update[topic](model, payload)
-	`, a.path, index, topic, jsonModel, payload), &update)
+		apps[key].app.update[topic](model, payload)
+	`, a.path, key, topic, jsonModel, payload), &update)
 	if err != nil {
 		return nil, err
 	}

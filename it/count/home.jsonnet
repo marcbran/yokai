@@ -20,4 +20,6 @@ local count = {
   },
 };
 
-[count]
+{
+  count: count,
+}
