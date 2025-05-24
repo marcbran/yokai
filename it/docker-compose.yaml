@@ -18,14 +18,8 @@ services:
     volumes:
       - ./${TEST_FOLDER}:/src
 
-  input-a:
+  cli:
     image: hivemq/mqtt-cli
-    command: sub -h mqtt -t yokai/test/input-a
-    depends_on:
-      - mqtt
-
-  output:
-    image: hivemq/mqtt-cli
-    command: sub -h mqtt -t yokai/test/output
+    command: sub -h mqtt -t '#' -T
     depends_on:
       - mqtt

@@ -7,21 +7,21 @@ run-one test:
     INPUT_FILE="./${TEST_FOLDER}/inputs.jsonl"
     EXPECTED_FILE="./${TEST_FOLDER}/outputs.jsonl"
 
-    docker compose down >/dev/null 2>&1
     docker compose stop >/dev/null 2>&1
+    docker compose down >/dev/null 2>&1
     docker compose up -d >/dev/null 2>&1
 
     sleep 1
 
     while read -r input; do
       echo "${input}"
-      docker run hivemq/mqtt-cli pub -t yokai/test/input-a -m "${input}" -h host.docker.internal
+      docker compose run --rm -T cli pub -h mqtt -t yokai/test/input-a -m "${input}" < /dev/null >/dev/null 2>&1
     done < "${INPUT_FILE}"
 
     sleep 1
 
     ACTUAL_FILE="$(mktemp)"
-    docker compose logs output --no-log-prefix > "${ACTUAL_FILE}"
+    docker compose logs cli --no-log-prefix | grep "yokai/test/output: " | sed "s/^yokai\/test\/output: //" > "${ACTUAL_FILE}"
 
     diff "${EXPECTED_FILE}" "${ACTUAL_FILE}" && export RESULT="Passed!" ||  export RESULT="Failed!"
     echo "${RESULT}"
@@ -29,8 +29,8 @@ run-one test:
         docker compose logs
     fi
 
-    docker compose down >/dev/null 2>&1
     docker compose stop >/dev/null 2>&1
+    docker compose down >/dev/null 2>&1
 
 run:
     #!/usr/bin/env bash
