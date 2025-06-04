@@ -1,3 +1,9 @@
+test:
+    #!/usr/bin/env bash
+    set -eu
+
+    jsonnet-kit test
+
 docker-build name suffix="" dockerfile="./Dockerfile" context=".":
     #!/usr/bin/env bash
     set -eu
@@ -23,8 +29,7 @@ build-snapshot:
 it: build-snapshot
     #!/usr/bin/env bash
     set -eu
-    cd it
-    just run
+    ./dist/darwin_darwin_arm64_v8.0/yokai it
 
 check-git-state:
     #!/usr/bin/env bash

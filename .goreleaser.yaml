@@ -8,12 +8,19 @@ before:
     - go generate ./...
 
 builds:
-  - env:
+  - id: darwin
+    env:
+      - CGO_ENABLED=1
+    goos:
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+  - id: linux
+    env:
       - CGO_ENABLED=0
     goos:
       - linux
-      - windows
-      - darwin
     goarch:
       - amd64
       - arm64

@@ -1,9 +1,11 @@
-package pkg
+package run
 
 import (
 	"context"
+	"embed"
 	"encoding/json"
 	"fmt"
+	"github.com/marcbran/jsonnet-kit/pkg/jsonnext"
 	"sync"
 
 	"github.com/google/go-jsonnet"
@@ -84,15 +86,24 @@ type AppData struct {
 	Subscriptions []string `json:"subscriptions"`
 }
 
+//go:embed lib
+var lib embed.FS
+
 func (a AppConfig) listApps() (map[string]AppData, error) {
+	vm := jsonnet.MakeVM()
+	vm.Importer(jsonnext.CompoundImporter{
+		Importers: []jsonnet.Importer{
+			&jsonnext.FSImporter{Fs: lib},
+			&jsonnet.FileImporter{},
+		},
+	})
+	vm.TLACode("config", fmt.Sprintf("import '%s'", a.path))
+	jsonStr, err := vm.EvaluateFile("./lib/list_apps.libsonnet")
+	if err != nil {
+		return nil, err
+	}
 	var apps map[string]AppData
-	err := evaluateAndUnmarshal("apps", fmt.Sprintf(`
-		local apps = import "%s";
-		std.mapWithKey(function (key, app) {
-			init: std.get(app.app, "init", ""),
-			subscriptions: std.get(app.app, "subscriptions", []),
-		}, apps)
-	`, a.path), &apps)
+	err = json.Unmarshal([]byte(jsonStr), &apps)
 	if err != nil {
 		return nil, err
 	}
@@ -100,19 +111,28 @@ func (a AppConfig) listApps() (map[string]AppData, error) {
 }
 
 func (a AppConfig) update(key string, topic string, payload string, model any) (map[string]any, error) {
-	var update map[string]any
 	jsonModel, err := json.Marshal(model)
 	if err != nil {
 		return nil, err
 	}
-	err = evaluateAndUnmarshal("update", fmt.Sprintf(`
-		local apps = import "%s";
-		local key = "%s";
-		local topic = "%s";
-		local model = %s;
-		local payload = %s;
-		apps[key].app.update[topic](model, payload)
-	`, a.path, key, topic, jsonModel, payload), &update)
+	vm := jsonnet.MakeVM()
+	vm.Importer(jsonnext.CompoundImporter{
+		Importers: []jsonnet.Importer{
+			&jsonnext.FSImporter{Fs: lib},
+			&jsonnet.FileImporter{},
+		},
+	})
+	vm.TLACode("config", fmt.Sprintf("import '%s'", a.path))
+	vm.TLAVar("key", key)
+	vm.TLAVar("topic", topic)
+	vm.TLACode("payload", payload)
+	vm.TLACode("model", string(jsonModel))
+	jsonStr, err := vm.EvaluateFile("./lib/update.libsonnet")
+	if err != nil {
+		return nil, err
+	}
+	var update map[string]any
+	err = json.Unmarshal([]byte(jsonStr), &update)
 	if err != nil {
 		return nil, err
 	}
