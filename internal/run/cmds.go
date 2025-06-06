@@ -11,13 +11,24 @@ import (
 type CommandRegistration struct {
 }
 
-func (c CommandRegistration) Register() (map[string][]Handler, error) {
-	return map[string][]Handler{
-		"yokai/delay": {DelayHandler{}},
+func (c CommandRegistration) Register() (Registry, error) {
+	return Registry{
+		TopicToHandlers: map[string][]Handler{
+			"yokai/delay": {DelayHandler{}},
+		},
+		KeyToHandler: nil,
 	}, nil
 }
 
+type CommandHandler struct {
+}
+
+func (d CommandHandler) HandleView(ctx context.Context) (string, error) {
+	return "", nil
+}
+
 type DelayHandler struct {
+	CommandHandler
 }
 
 type Delay struct {
@@ -26,7 +37,7 @@ type Delay struct {
 	Message      any
 }
 
-func (d DelayHandler) Handle(ctx context.Context, topic string, payload string) (map[string]string, error) {
+func (d DelayHandler) HandleUpdate(ctx context.Context, topic string, payload string) (map[string]string, error) {
 	var delay Delay
 	err := json.Unmarshal([]byte(payload), &delay)
 	if err != nil {

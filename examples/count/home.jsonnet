@@ -16,6 +16,7 @@ local count = {
         [$.output]: self.model,
       },
     },
+    view(model): 'Value: %(value)d' % model,
   },
 };
 

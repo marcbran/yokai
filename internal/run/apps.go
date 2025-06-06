@@ -5,51 +5,54 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
-	"github.com/marcbran/jsonnet-kit/pkg/jsonnext"
 	"sync"
+
+	"github.com/marcbran/jsonnet-kit/pkg/jsonnext"
 
 	"github.com/google/go-jsonnet"
 )
 
 type AppRegistration struct {
-	appConfig AppConfig
+	appLib AppLib
 }
 
-func (a AppRegistration) Register() (map[string][]Handler, error) {
-	apps, err := a.appConfig.listApps()
+func (a AppRegistration) Register() (Registry, error) {
+	apps, err := a.appLib.listApps()
 	if err != nil {
-		return nil, err
+		return Registry{}, err
 	}
 
 	var models sync.Map
-	topicToHandlers := make(map[string][]Handler)
+	res := NewRegistry()
 	for key, app := range apps {
 		models.Store(key, app.Init)
-		for _, topic := range app.Subscriptions {
-			topicToHandlers[topic] = append(topicToHandlers[topic], AppHandler{
-				key:       key,
-				models:    &models,
-				appConfig: a.appConfig,
-			})
+		handler := AppHandler{
+			key:    key,
+			models: &models,
+			appLib: a.appLib,
 		}
+		for _, topic := range app.Subscriptions {
+			res.TopicToHandlers[topic] = append(res.TopicToHandlers[topic], handler)
+		}
+		res.KeyToHandler[key] = handler
 	}
 
-	return topicToHandlers, nil
+	return res, nil
 }
 
 type AppHandler struct {
-	key       string
-	models    *sync.Map
-	appConfig AppConfig
+	key    string
+	models *sync.Map
+	appLib AppLib
 }
 
-func (a AppHandler) Handle(ctx context.Context, topic string, payload string) (map[string]string, error) {
+func (a AppHandler) HandleUpdate(ctx context.Context, topic string, payload string) (map[string]string, error) {
 	model, ok := a.models.Load(a.key)
 	if !ok {
 		return nil, fmt.Errorf("model not found for app %s", a.key)
 	}
 
-	updates, err := a.appConfig.update(a.key, topic, payload, model)
+	updates, err := a.appLib.update(a.key, topic, payload, model)
 	if err != nil {
 		return nil, err
 	}
@@ -71,14 +74,21 @@ func (a AppHandler) Handle(ctx context.Context, topic string, payload string) (m
 	return outputs, nil
 }
 
-type AppConfig struct {
-	path string
+func (a AppHandler) HandleView(ctx context.Context) (string, error) {
+	model, ok := a.models.Load(a.key)
+	if !ok {
+		return "", fmt.Errorf("model not found for app %s", a.key)
+	}
+
+	view, err := a.appLib.view(a.key, model)
+	if err != nil {
+		return "", err
+	}
+	return view, nil
 }
 
-func NewAppConfig(path string) AppConfig {
-	return AppConfig{
-		path: path,
-	}
+type AppLib struct {
+	config string
 }
 
 type AppData struct {
@@ -89,7 +99,7 @@ type AppData struct {
 //go:embed lib
 var lib embed.FS
 
-func (a AppConfig) listApps() (map[string]AppData, error) {
+func (a AppLib) listApps() (map[string]AppData, error) {
 	vm := jsonnet.MakeVM()
 	vm.Importer(jsonnext.CompoundImporter{
 		Importers: []jsonnet.Importer{
@@ -97,7 +107,7 @@ func (a AppConfig) listApps() (map[string]AppData, error) {
 			&jsonnet.FileImporter{},
 		},
 	})
-	vm.TLACode("config", fmt.Sprintf("import '%s'", a.path))
+	vm.TLACode("config", fmt.Sprintf("import '%s'", a.config))
 	jsonStr, err := vm.EvaluateFile("./lib/list_apps.libsonnet")
 	if err != nil {
 		return nil, err
@@ -110,7 +120,7 @@ func (a AppConfig) listApps() (map[string]AppData, error) {
 	return apps, nil
 }
 
-func (a AppConfig) update(key string, topic string, payload string, model any) (map[string]any, error) {
+func (a AppLib) update(key string, topic string, payload string, model any) (map[string]any, error) {
 	jsonModel, err := json.Marshal(model)
 	if err != nil {
 		return nil, err
@@ -122,7 +132,7 @@ func (a AppConfig) update(key string, topic string, payload string, model any) (
 			&jsonnet.FileImporter{},
 		},
 	})
-	vm.TLACode("config", fmt.Sprintf("import '%s'", a.path))
+	vm.TLACode("config", fmt.Sprintf("import '%s'", a.config))
 	vm.TLAVar("key", key)
 	vm.TLAVar("topic", topic)
 	vm.TLACode("payload", payload)
@@ -139,11 +149,29 @@ func (a AppConfig) update(key string, topic string, payload string, model any) (
 	return update, nil
 }
 
-func evaluateAndUnmarshal(name, snippet string, v any) error {
-	vm := jsonnet.MakeVM()
-	jsonStr, err := vm.EvaluateAnonymousSnippet(name, snippet)
+func (a AppLib) view(key string, model any) (string, error) {
+	jsonModel, err := json.Marshal(model)
 	if err != nil {
-		return err
+		return "", err
 	}
-	return json.Unmarshal([]byte(jsonStr), v)
+	vm := jsonnet.MakeVM()
+	vm.Importer(jsonnext.CompoundImporter{
+		Importers: []jsonnet.Importer{
+			&jsonnext.FSImporter{Fs: lib},
+			&jsonnet.FileImporter{},
+		},
+	})
+	vm.TLACode("config", fmt.Sprintf("import '%s'", a.config))
+	vm.TLAVar("key", key)
+	vm.TLACode("model", string(jsonModel))
+	jsonStr, err := vm.EvaluateFile("./lib/view.libsonnet")
+	if err != nil {
+		return "", err
+	}
+	var view string
+	err = json.Unmarshal([]byte(jsonStr), &view)
+	if err != nil {
+		return "", err
+	}
+	return view, nil
 }

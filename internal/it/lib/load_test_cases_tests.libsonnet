@@ -25,7 +25,16 @@ local exampleTests = {
       input:: import '../../../examples/lighting/home_it.libsonnet',
       expected: [
         {
-          name: '/simple',
+          name: '/single',
+          inputs: [
+            { topic: 'yokai/test/input-a', payload: '{"action":"single"}' },
+          ],
+          outputs: [
+            { topic: 'yokai/test/output', payload: '{"brightness":255,"state":"on"}' },
+          ],
+        },
+        {
+          name: '/double',
           inputs: [
             { topic: 'yokai/test/input-a', payload: '{"action":"double"}' },
           ],

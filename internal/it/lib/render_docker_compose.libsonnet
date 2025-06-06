@@ -18,7 +18,7 @@ local renderDockerCompose(rootDir, configFile, version) =
         ],
         command: 'run',
         environment: {
-          YOKAI_BROKER: 'mqtt:1883',
+          YOKAI_MQTT_BROKER: 'mqtt:1883',
           YOKAI_APP_CONFIG: '/src/%(configFile)s' % data,
         },
         volumes: [
