@@ -4,6 +4,12 @@ test:
 
     jsonnet-kit test
 
+lint:
+    #!/usr/bin/env bash
+    set -eu
+
+    golangci-lint run
+
 docker-build name suffix="" dockerfile="./Dockerfile" context=".":
     #!/usr/bin/env bash
     set -eu
