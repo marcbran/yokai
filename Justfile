@@ -10,34 +10,17 @@ lint:
 
     golangci-lint run
 
-docker-build name suffix="" dockerfile="./Dockerfile" context=".":
+build-dev:
     #!/usr/bin/env bash
     set -eu
+    goreleaser release --snapshot --clean --config .goreleaser.dev.yaml
 
-    NAME="{{ name }}"
-    SUFFIX={{ suffix }}
-    DOCKERFILE={{ dockerfile }}
-    CONTEXT={{ context }}
-
-    TAG="$(git rev-parse --short HEAD)"
-    BRANCH="$(git rev-parse --abbrev-ref HEAD)"
-
-    docker build -t "${NAME}${SUFFIX}:${TAG}" -f "${DOCKERFILE}" "${CONTEXT}"
-    docker tag "${NAME}${SUFFIX}:${TAG}" "${NAME}${SUFFIX}:${BRANCH}"
-
-build: (docker-build "yokai")
-
-build-snapshot:
-    #!/usr/bin/env bash
-    set -eu
-    goreleaser release --snapshot --clean
-
-it: build-snapshot
+it: #build-dev
     #!/usr/bin/env bash
     set -eu
     ./dist/darwin_darwin_arm64_v8.0/yokai it
 
-debug:
+dev:
     #!/usr/bin/env bash
     set -eu
     docker compose -f debug/docker-compose.yml up -d

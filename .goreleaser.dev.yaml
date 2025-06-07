@@ -8,6 +8,14 @@ before:
     - go generate ./...
 
 builds:
+  - id: darwin
+    env:
+      - CGO_ENABLED=1
+    goos:
+      - darwin
+    goarch:
+      - amd64
+      - arm64
   - id: linux
     env:
       - CGO_ENABLED=0
@@ -17,25 +25,8 @@ builds:
       - amd64
       - arm64
 
-archives:
-  - formats: [tar.gz]
-    name_template: >-
-      {{ .ProjectName }}_
-      {{- title .Os }}_
-      {{- if eq .Arch "amd64" }}x86_64
-      {{- else if eq .Arch "386" }}i386
-      {{- else }}{{ .Arch }}{{ end }}
-      {{- if .Arm }}v{{ .Arm }}{{ end }}
-    format_overrides:
-      - goos: windows
-        formats: [zip]
-
 dockers:
   - image_templates:
-      - "{{ if not .IsSnapshot }}ghcr.io/marcbran/{{ .ProjectName }}:{{ .Tag }}-amd64{{ end }}"
-      - "{{ if not .IsSnapshot }}ghcr.io/marcbran/{{ .ProjectName }}:{{ .Major }}-amd64{{ end }}"
-      - "{{ if not .IsSnapshot }}ghcr.io/marcbran/{{ .ProjectName }}:{{ .Major }}.{{ .Minor }}-amd64{{ end }}"
-      - "{{ if not .IsSnapshot }}ghcr.io/marcbran/{{ .ProjectName }}:latest-amd64{{ end }}"
       - "{{ if .IsSnapshot }}ghcr.io/marcbran/{{ .ProjectName }}:{{ .Tag }}-SNAPSHOT-amd64{{ end }}"
       - "{{ if .IsSnapshot }}ghcr.io/marcbran/{{ .ProjectName }}:dev-amd64{{ end }}"
     goarch: amd64
@@ -43,10 +34,6 @@ dockers:
     build_flag_templates:
       - "--platform=linux/amd64"
   - image_templates:
-      - "{{ if not .IsSnapshot }}ghcr.io/marcbran/{{ .ProjectName }}:{{ .Tag }}-arm64v8{{ end }}"
-      - "{{ if not .IsSnapshot }}ghcr.io/marcbran/{{ .ProjectName }}:{{ .Major }}-arm64v8{{ end }}"
-      - "{{ if not .IsSnapshot }}ghcr.io/marcbran/{{ .ProjectName }}:{{ .Major }}.{{ .Minor }}-arm64v8{{ end }}"
-      - "{{ if not .IsSnapshot }}ghcr.io/marcbran/{{ .ProjectName }}:latest-arm64v8{{ end }}"
       - "{{ if .IsSnapshot }}ghcr.io/marcbran/{{ .ProjectName }}:{{ .Tag }}-SNAPSHOT-arm64v8{{ end }}"
       - "{{ if .IsSnapshot }}ghcr.io/marcbran/{{ .ProjectName }}:dev-arm64v8{{ end }}"
     goarch: arm64
@@ -70,17 +57,3 @@ docker_manifests:
     image_templates:
       - "ghcr.io/marcbran/{{ .ProjectName }}:latest-amd64"
       - "ghcr.io/marcbran/{{ .ProjectName }}:latest-arm64v8"
-
-changelog:
-  sort: asc
-  filters:
-    exclude:
-      - "^docs:"
-      - "^test:"
-
-release:
-  footer: >-
-
-    ---
-
-    Released by [GoReleaser](https://github.com/goreleaser/goreleaser).
