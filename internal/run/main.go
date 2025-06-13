@@ -5,9 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
+	"github.com/fsnotify/fsnotify"
 	log "github.com/sirupsen/logrus"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
@@ -36,6 +39,115 @@ type AppConfig struct {
 }
 
 func Run(ctx context.Context, config *Config) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	configPath := config.App.Config
+	configDir := filepath.Dir(configPath)
+
+	restartCh := make(chan struct{}, 1)
+
+	g, gCtx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		watchCtx, watchCancel := context.WithCancel(gCtx)
+		defer watchCancel()
+
+		err := watchFiles(watchCtx, configDir, restartCh)
+		if err != nil && !errors.Is(err, context.Canceled) {
+			return err
+		}
+		return nil
+	})
+
+	g.Go(func() error {
+		for {
+			if gCtx.Err() != nil {
+				return gCtx.Err()
+			}
+
+			runCtx, runCancel := context.WithCancel(gCtx)
+
+			go func() {
+				select {
+				case <-restartCh:
+					runCancel()
+				case <-runCtx.Done():
+				}
+			}()
+
+			err := runApp(runCtx, config)
+			runCancel()
+
+			if err != nil && !errors.Is(err, context.Canceled) {
+				return err
+			}
+		}
+	})
+
+	return g.Wait()
+}
+
+func watchFiles(ctx context.Context, dir string, restartCh chan<- struct{}) error {
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		return err
+	}
+	defer watcher.Close()
+
+	err = watcher.Add(dir)
+	if err != nil {
+		return err
+	}
+
+	log.WithField("directory", dir).
+		Info("watching directory for changes")
+
+	err = filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return watcher.Add(path)
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case event, ok := <-watcher.Events:
+			if !ok {
+				return nil
+			}
+			if event.Op&(fsnotify.Write|fsnotify.Create|fsnotify.Remove) != 0 {
+				ext := filepath.Ext(event.Name)
+				if ext == ".jsonnet" || ext == ".libsonnet" {
+					log.WithField("file", event.Name).
+						Info("file changed, triggering restart")
+					select {
+					case restartCh <- struct{}{}:
+					default:
+					}
+				}
+			}
+		case err, ok := <-watcher.Errors:
+			if !ok {
+				return nil
+			}
+			log.WithError(err).
+				Error("file watcher error")
+		}
+	}
+}
+
+func runApp(ctx context.Context, config *Config) error {
+	g, gCtx := errgroup.WithContext(ctx)
+
 	appLib := AppLib{config.App.Config}
 	registration := CompoundRegistration{
 		[]Registration{
@@ -49,22 +161,26 @@ func Run(ctx context.Context, config *Config) error {
 		return err
 	}
 
-	err = runWithRegistry(ctx, config, registry)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func runWithRegistry(ctx context.Context, config *Config, registry Registry) error {
-	g, ctx := errgroup.WithContext(ctx)
-
 	g.Go(func() error {
-		return runMqttClient(ctx, config.Mqtt, registry.TopicToHandlers)
+		mqttCtx, mqttCancel := context.WithCancel(gCtx)
+		defer mqttCancel()
+
+		err := runMqttClient(mqttCtx, config.Mqtt, registry.TopicToHandlers)
+		if err != nil && !errors.Is(err, context.Canceled) {
+			return err
+		}
+		return nil
 	})
 
 	g.Go(func() error {
-		return runHttpServer(ctx, config.Http, registry.KeyToHandler)
+		httpCtx, httpCancel := context.WithCancel(gCtx)
+		defer httpCancel()
+
+		err := runHttpServer(httpCtx, config.Http, registry.KeyToHandler)
+		if err != nil && !errors.Is(err, context.Canceled) {
+			return err
+		}
+		return nil
 	})
 
 	return g.Wait()
