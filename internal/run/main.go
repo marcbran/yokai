@@ -93,7 +93,13 @@ func watchFiles(ctx context.Context, dir string, restartCh chan<- struct{}) erro
 	if err != nil {
 		return err
 	}
-	defer watcher.Close()
+	defer func() {
+		err := watcher.Close()
+		if err != nil {
+			log.WithError(err).
+				Error("failed to close watcher")
+		}
+	}()
 
 	err = watcher.Add(dir)
 	if err != nil {
