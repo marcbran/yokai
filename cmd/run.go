@@ -53,6 +53,7 @@ func loadConfig(configPath string) (*run.Config, error) {
 	_ = v.BindEnv("mqtt.ping_timeout")
 	_ = v.BindEnv("http.port")
 	_ = v.BindEnv("app.config")
+	_ = v.BindEnv("app.vendor")
 
 	var cfg run.Config
 	err := v.Unmarshal(&cfg)

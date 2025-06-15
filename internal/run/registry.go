@@ -21,6 +21,8 @@ func NewRegistry() Registry {
 type Handler interface {
 	HandleUpdate(ctx context.Context, topic string, payload string) (map[string]string, error)
 	HandleView(ctx context.Context) (string, error)
+	HandleViewEvent(ctx context.Context, payload string) (map[string]string, error)
+	SubscribeView() (<-chan string, func())
 }
 
 type CompoundRegistration struct {
