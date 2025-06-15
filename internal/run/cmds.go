@@ -23,8 +23,20 @@ func (c CommandRegistration) Register() (Registry, error) {
 type CommandHandler struct {
 }
 
+func (d CommandHandler) HandleUpdate(ctx context.Context, topic string, payload string) (map[string]string, error) {
+	return nil, nil
+}
+
 func (d CommandHandler) HandleView(ctx context.Context) (string, error) {
 	return "", nil
+}
+
+func (d CommandHandler) HandleViewEvent(ctx context.Context, payload string) (map[string]string, error) {
+	return nil, nil
+}
+
+func (d CommandHandler) SubscribeView() (<-chan string, func()) {
+	return nil, nil
 }
 
 type DelayHandler struct {

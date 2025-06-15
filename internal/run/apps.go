@@ -26,10 +26,11 @@ func (a AppRegistration) Register() (Registry, error) {
 	res := NewRegistry()
 	for key, app := range apps {
 		models.Store(key, app.Init)
-		handler := AppHandler{
-			key:    key,
-			models: &models,
-			appLib: a.appLib,
+		handler := &AppHandler{
+			key:         key,
+			models:      &models,
+			appLib:      a.appLib,
+			subscribers: sync.Map{},
 		}
 		for _, topic := range app.Subscriptions {
 			res.TopicToHandlers[topic] = append(res.TopicToHandlers[topic], handler)
@@ -41,12 +42,13 @@ func (a AppRegistration) Register() (Registry, error) {
 }
 
 type AppHandler struct {
-	key    string
-	models *sync.Map
-	appLib AppLib
+	key         string
+	models      *sync.Map
+	appLib      AppLib
+	subscribers sync.Map
 }
 
-func (a AppHandler) HandleUpdate(ctx context.Context, topic string, payload string) (map[string]string, error) {
+func (a *AppHandler) HandleUpdate(ctx context.Context, topic string, payload string) (map[string]string, error) {
 	model, ok := a.models.Load(a.key)
 	if !ok {
 		return nil, fmt.Errorf("model not found for app %s", a.key)
@@ -57,7 +59,23 @@ func (a AppHandler) HandleUpdate(ctx context.Context, topic string, payload stri
 		return nil, err
 	}
 
-	a.models.Store(a.key, updates["model"])
+	if model, ok := updates["model"]; ok {
+		a.models.Store(a.key, model)
+
+		view, err := a.appLib.view(a.key, model, true)
+		if err != nil {
+			return nil, err
+		}
+
+		a.subscribers.Range(func(ch, _ interface{}) bool {
+			select {
+			case ch.(chan string) <- view:
+			default:
+				// Drop update if channel is full
+			}
+			return true
+		})
+	}
 
 	outputs := make(map[string]string)
 	for topic, payload := range updates {
@@ -74,17 +92,34 @@ func (a AppHandler) HandleUpdate(ctx context.Context, topic string, payload stri
 	return outputs, nil
 }
 
-func (a AppHandler) HandleView(ctx context.Context) (string, error) {
+func (a *AppHandler) HandleView(ctx context.Context) (string, error) {
 	model, ok := a.models.Load(a.key)
 	if !ok {
 		return "", fmt.Errorf("model not found for app %s", a.key)
 	}
 
-	view, err := a.appLib.view(a.key, model)
+	view, err := a.appLib.view(a.key, model, false)
 	if err != nil {
 		return "", err
 	}
 	return view, nil
+}
+
+func (a *AppHandler) HandleViewEvent(ctx context.Context, payload string) (map[string]string, error) {
+	return a.HandleUpdate(ctx, "viewEvents", payload)
+}
+
+func (a *AppHandler) SubscribeView() (<-chan string, func()) {
+	ch := make(chan string, 100)
+
+	a.subscribers.Store(ch, struct{}{})
+
+	unsubscribe := func() {
+		a.subscribers.Delete(ch)
+		close(ch)
+	}
+
+	return ch, unsubscribe
 }
 
 type AppLib struct {
@@ -149,10 +184,11 @@ func (a AppLib) update(key string, topic string, payload string, model any) (map
 	return update, nil
 }
 
-func (a AppLib) view(key string, model any) (string, error) {
+func (a AppLib) view(key string, model any, fragment bool) (string, error) {
 	vm := a.vm()
 	vm.TLACode("config", fmt.Sprintf("import '%s'", a.config))
 	vm.TLAVar("key", key)
+	vm.TLACode("fragment", fmt.Sprintf("%t", fragment))
 	jsonModel, err := json.Marshal(model)
 	if err != nil {
 		return "", err
