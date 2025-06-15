@@ -35,7 +35,8 @@ type HttpConfig struct {
 }
 
 type AppConfig struct {
-	Config string `mapstructure:"config"`
+	Config string   `mapstructure:"config"`
+	Vendor []string `mapstructure:"vendor"`
 }
 
 func Run(ctx context.Context, config *Config) error {
@@ -154,7 +155,10 @@ func watchFiles(ctx context.Context, dir string, restartCh chan<- struct{}) erro
 func runApp(ctx context.Context, config *Config) error {
 	g, gCtx := errgroup.WithContext(ctx)
 
-	appLib := AppLib{config.App.Config}
+	appLib := AppLib{
+		config: config.App.Config,
+		vendor: config.App.Vendor,
+	}
 	registration := CompoundRegistration{
 		[]Registration{
 			AppRegistration{appLib},

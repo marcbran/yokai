@@ -10,6 +10,7 @@ require (
 	github.com/docker/cli v28.2.2+incompatible
 	github.com/docker/compose/v2 v2.37.1
 	github.com/eclipse/paho.mqtt.golang v1.5.0
+	github.com/fsnotify/fsnotify v1.9.0
 	github.com/google/go-jsonnet v0.21.0
 	github.com/google/uuid v1.6.0
 	github.com/marcbran/jsonnet-kit v0.8.0
@@ -75,7 +76,6 @@ require (
 	github.com/emicklei/go-restful/v3 v3.11.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/fsnotify/fsevents v0.2.0 // indirect
-	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/fvbommel/sortorder v1.1.0 // indirect
 	github.com/fxamacker/cbor/v2 v2.7.0 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect

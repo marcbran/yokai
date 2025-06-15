@@ -15,7 +15,7 @@ build-dev:
     set -eu
     goreleaser release --snapshot --clean --config .goreleaser.dev.yaml
 
-it: #build-dev
+it: build-dev
     #!/usr/bin/env bash
     set -eu
     ./dist/darwin_darwin_arm64_v8.0/yokai it

@@ -89,6 +89,7 @@ func (a AppHandler) HandleView(ctx context.Context) (string, error) {
 
 type AppLib struct {
 	config string
+	vendor []string
 }
 
 type AppData struct {
@@ -99,14 +100,19 @@ type AppData struct {
 //go:embed lib
 var lib embed.FS
 
-func (a AppLib) listApps() (map[string]AppData, error) {
+func (a AppLib) vm() *jsonnet.VM {
 	vm := jsonnet.MakeVM()
 	vm.Importer(jsonnext.CompoundImporter{
 		Importers: []jsonnet.Importer{
 			&jsonnext.FSImporter{Fs: lib},
-			&jsonnet.FileImporter{},
+			&jsonnet.FileImporter{JPaths: a.vendor},
 		},
 	})
+	return vm
+}
+
+func (a AppLib) listApps() (map[string]AppData, error) {
+	vm := a.vm()
 	vm.TLACode("config", fmt.Sprintf("import '%s'", a.config))
 	jsonStr, err := vm.EvaluateFile("./lib/list_apps.libsonnet")
 	if err != nil {
@@ -121,21 +127,15 @@ func (a AppLib) listApps() (map[string]AppData, error) {
 }
 
 func (a AppLib) update(key string, topic string, payload string, model any) (map[string]any, error) {
-	jsonModel, err := json.Marshal(model)
-	if err != nil {
-		return nil, err
-	}
-	vm := jsonnet.MakeVM()
-	vm.Importer(jsonnext.CompoundImporter{
-		Importers: []jsonnet.Importer{
-			&jsonnext.FSImporter{Fs: lib},
-			&jsonnet.FileImporter{},
-		},
-	})
+	vm := a.vm()
 	vm.TLACode("config", fmt.Sprintf("import '%s'", a.config))
 	vm.TLAVar("key", key)
 	vm.TLAVar("topic", topic)
 	vm.TLACode("payload", payload)
+	jsonModel, err := json.Marshal(model)
+	if err != nil {
+		return nil, err
+	}
 	vm.TLACode("model", string(jsonModel))
 	jsonStr, err := vm.EvaluateFile("./lib/update.libsonnet")
 	if err != nil {
@@ -150,19 +150,13 @@ func (a AppLib) update(key string, topic string, payload string, model any) (map
 }
 
 func (a AppLib) view(key string, model any) (string, error) {
+	vm := a.vm()
+	vm.TLACode("config", fmt.Sprintf("import '%s'", a.config))
+	vm.TLAVar("key", key)
 	jsonModel, err := json.Marshal(model)
 	if err != nil {
 		return "", err
 	}
-	vm := jsonnet.MakeVM()
-	vm.Importer(jsonnext.CompoundImporter{
-		Importers: []jsonnet.Importer{
-			&jsonnext.FSImporter{Fs: lib},
-			&jsonnet.FileImporter{},
-		},
-	})
-	vm.TLACode("config", fmt.Sprintf("import '%s'", a.config))
-	vm.TLAVar("key", key)
 	vm.TLACode("model", string(jsonModel))
 	jsonStr, err := vm.EvaluateFile("./lib/view.libsonnet")
 	if err != nil {
