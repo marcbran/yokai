@@ -1,11 +1,12 @@
 package cmd
 
 import (
+	"strings"
+
 	"github.com/marcbran/yokai/internal/run"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"strings"
 )
 
 var runCmd = &cobra.Command{

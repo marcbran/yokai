@@ -2,10 +2,11 @@ package cmd
 
 import (
 	"encoding/json"
+	"os"
+
 	"github.com/marcbran/yokai/internal/it"
 	"github.com/marcbran/yokai/internal/terminal"
 	"github.com/spf13/cobra"
-	"os"
 )
 
 var itCmd = &cobra.Command{
