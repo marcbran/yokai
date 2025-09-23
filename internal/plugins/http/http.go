@@ -1,4 +1,4 @@
-package run
+package http
 
 import (
 	"context"
@@ -7,22 +7,31 @@ import (
 	"net/http"
 
 	"github.com/gorilla/websocket"
+	"github.com/marcbran/yokai/internal/run"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 )
 
-func startHttp(
-	ctx context.Context,
-	g *errgroup.Group,
-	config HttpConfig,
-	keyToModel map[Key]Model,
-	broker Broker,
-) {
+type Config struct {
+	Port int `mapstructure:"port"`
+}
+
+type HttpPlugin struct {
+	config Config
+}
+
+func NewHttpPlugin(config Config) *HttpPlugin {
+	return &HttpPlugin{
+		config: config,
+	}
+}
+
+func (h *HttpPlugin) Start(ctx context.Context, g *errgroup.Group, registry run.Registry, source run.Broker, sink run.Broker) {
 	g.Go(func() error {
 		httpCtx, httpCancel := context.WithCancel(ctx)
 		defer httpCancel()
 
-		err := runHttpServer(httpCtx, config, keyToModel, broker)
+		err := runHttpServer(httpCtx, h.config, registry.KeyToModel, sink)
 		if err != nil && !errors.Is(err, context.Canceled) {
 			return err
 		}
@@ -32,9 +41,9 @@ func startHttp(
 
 func runHttpServer(
 	ctx context.Context,
-	config HttpConfig,
-	keyToModel map[Key]Model,
-	broker Broker,
+	config Config,
+	keyToModel map[run.Key]run.Model,
+	broker run.Broker,
 ) error {
 	mux := http.NewServeMux()
 
@@ -66,7 +75,7 @@ func runHttpServer(
 	return nil
 }
 
-func handleGet(model Model, key Key) func(w http.ResponseWriter, r *http.Request) {
+func handleGet(model run.Model, key run.Key) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -99,7 +108,7 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-func handleWs(model Model, key Key, broker Broker) func(w http.ResponseWriter, r *http.Request) {
+func handleWs(model run.Model, key run.Key, broker run.Broker) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		conn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {

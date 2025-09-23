@@ -1,26 +1,49 @@
-package run
+package mqtt
 
 import (
 	"context"
 	"errors"
+	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
+	"github.com/marcbran/yokai/internal/run"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 )
 
-func startMqttSub(
-	ctx context.Context,
-	g *errgroup.Group,
-	config MqttConfig,
-	topicToModels map[Topic][]Model,
-	broker Broker,
-) {
+type Config struct {
+	Broker      string        `mapstructure:"broker"`
+	ClientId    string        `mapstructure:"clientId"`
+	KeepAlive   time.Duration `mapstructure:"keep_alive"`
+	PingTimeout time.Duration `mapstructure:"ping_timeout"`
+}
+
+type MqttPlugin struct {
+	config Config
+}
+
+func NewMqttPlugin(config Config) *MqttPlugin {
+	return &MqttPlugin{
+		config: config,
+	}
+}
+
+func (m *MqttPlugin) Start(ctx context.Context, g *errgroup.Group, registry run.Registry, source run.Broker, sink run.Broker) {
 	g.Go(func() error {
 		mqttCtx, mqttCancel := context.WithCancel(ctx)
 		defer mqttCancel()
 
-		err := runMqttSub(mqttCtx, config, topicToModels, broker)
+		err := runMqttSub(mqttCtx, m.config, registry.TopicToModels, sink)
+		if err != nil && !errors.Is(err, context.Canceled) {
+			return err
+		}
+		return nil
+	})
+	g.Go(func() error {
+		mqttCtx, mqttCancel := context.WithCancel(ctx)
+		defer mqttCancel()
+
+		err := runMqttPub(mqttCtx, m.config, source)
 		if err != nil && !errors.Is(err, context.Canceled) {
 			return err
 		}
@@ -30,9 +53,9 @@ func startMqttSub(
 
 func runMqttSub(
 	ctx context.Context,
-	config MqttConfig,
-	topicToModels map[Topic][]Model,
-	broker Broker,
+	config Config,
+	topicToModels map[run.Topic][]run.Model,
+	broker run.Broker,
 ) error {
 	client := mqtt.NewClient(mqtt.NewClientOptions().
 		AddBroker(config.Broker).
@@ -47,7 +70,7 @@ func runMqttSub(
 
 	defer client.Disconnect(250)
 
-	var topics []Topic
+	var topics []run.Topic
 	filters := make(map[string]byte)
 	for topic := range topicToModels {
 		topics = append(topics, topic)
@@ -110,20 +133,7 @@ func runMqttSub(
 	return g.Wait()
 }
 
-func startMqttPub(ctx context.Context, g *errgroup.Group, config MqttConfig, broker Broker) {
-	g.Go(func() error {
-		mqttCtx, mqttCancel := context.WithCancel(ctx)
-		defer mqttCancel()
-
-		err := runMqttPub(mqttCtx, config, broker)
-		if err != nil && !errors.Is(err, context.Canceled) {
-			return err
-		}
-		return nil
-	})
-}
-
-func runMqttPub(ctx context.Context, config MqttConfig, broker Broker) error {
+func runMqttPub(ctx context.Context, config Config, broker run.Broker) error {
 	client := mqtt.NewClient(mqtt.NewClientOptions().
 		AddBroker(config.Broker).
 		SetClientID(config.ClientId).

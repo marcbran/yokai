@@ -8,18 +8,18 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-func startUpdater(
-	ctx context.Context,
-	g *errgroup.Group,
-	topicToModels map[Topic][]Model,
-	source Broker,
-	sink Broker,
-) {
+type UpdaterPlugin struct{}
+
+func NewUpdaterPlugin() *UpdaterPlugin {
+	return &UpdaterPlugin{}
+}
+
+func (u *UpdaterPlugin) Start(ctx context.Context, g *errgroup.Group, registry Registry, source Broker, sink Broker) {
 	g.Go(func() error {
 		updaterCtx, updaterCancel := context.WithCancel(ctx)
 		defer updaterCancel()
 
-		err := runUpdater(updaterCtx, topicToModels, source, sink)
+		err := runUpdater(updaterCtx, registry.TopicToModels, source, sink)
 		if err != nil && !errors.Is(err, context.Canceled) {
 			return err
 		}

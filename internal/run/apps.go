@@ -12,8 +12,22 @@ import (
 	"github.com/google/go-jsonnet"
 )
 
+type AppConfig struct {
+	Config string   `mapstructure:"config"`
+	Vendor []string `mapstructure:"vendor"`
+}
+
 type AppRegistration struct {
 	appLib AppLib
+}
+
+func NewAppRegistration(config AppConfig) *AppRegistration {
+	return &AppRegistration{
+		appLib: AppLib{
+			config: config.Config,
+			vendor: config.Vendor,
+		},
+	}
 }
 
 func (a AppRegistration) Register() (Registry, error) {

@@ -1,6 +1,10 @@
 package run
 
-import "context"
+import (
+	"context"
+
+	"golang.org/x/sync/errgroup"
+)
 
 type Topic = string
 type Payload = string
@@ -31,6 +35,10 @@ func NewRegistry() Registry {
 	}
 }
 
+type Plugin interface {
+	Start(ctx context.Context, g *errgroup.Group, registry Registry, source Broker, sink Broker)
+}
+
 type Model interface {
 	Update(ctx context.Context, topic Topic, payload Payload) (map[Topic]Payload, error)
 	View(ctx context.Context) (string, error)
@@ -43,6 +51,12 @@ type Command interface {
 
 type CompoundRegistration struct {
 	registrations []Registration
+}
+
+func NewCompoundRegistration(registrations []Registration) *CompoundRegistration {
+	return &CompoundRegistration{
+		registrations: registrations,
+	}
 }
 
 func (c CompoundRegistration) Register() (Registry, error) {
