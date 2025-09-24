@@ -20,7 +20,7 @@ type HttpPlugin struct {
 	config Config
 }
 
-func NewHttpPlugin(config Config) *HttpPlugin {
+func NewPlugin(config Config) *HttpPlugin {
 	return &HttpPlugin{
 		config: config,
 	}

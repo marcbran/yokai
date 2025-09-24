@@ -22,7 +22,7 @@ type MqttPlugin struct {
 	config Config
 }
 
-func NewMqttPlugin(config Config) *MqttPlugin {
+func NewPlugin(config Config) *MqttPlugin {
 	return &MqttPlugin{
 		config: config,
 	}

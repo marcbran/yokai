@@ -33,8 +33,8 @@ func Serve(ctx context.Context, config *Config) error {
 	)
 	plugins := []run.Plugin{
 		run.NewUpdaterPlugin(),
-		mqtt.NewMqttPlugin(config.Mqtt),
-		http.NewHttpPlugin(config.Http),
+		mqtt.NewPlugin(config.Mqtt),
+		http.NewPlugin(config.Http),
 	}
 
 	configPath := config.App.Config

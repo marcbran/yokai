@@ -4,26 +4,24 @@ import (
 	"encoding/json"
 	"os"
 
-	"github.com/marcbran/yokai/internal/it"
 	"github.com/marcbran/yokai/internal/terminal"
+	"github.com/marcbran/yokai/internal/test"
 	"github.com/spf13/cobra"
 )
 
-var itCmd = &cobra.Command{
-	Use:   "it",
-	Short: "Runs integration tests for a Yokai application",
+var testCmd = &cobra.Command{
+	Use:   "test [dirname]",
+	Short: "Runs tests for a Yokai application",
+	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
 		cmd.SilenceErrors = true
-		dirname := "."
-		if len(args) > 0 {
-			dirname = args[0]
-		}
+		dirname := args[0]
 		j, err := cmd.Flags().GetBool("json")
 		if err != nil {
 			return err
 		}
-		run, err := it.RunDir(cmd.Context(), dirname)
+		run, err := test.RunDir(cmd.Context(), dirname)
 		if err != nil {
 			return err
 		}
@@ -62,5 +60,5 @@ var itCmd = &cobra.Command{
 }
 
 func init() {
-	itCmd.Flags().BoolP("json", "j", false, "Outputs the test results in JSON")
+	testCmd.Flags().BoolP("json", "j", false, "Outputs the test results in JSON")
 }
