@@ -20,6 +20,6 @@ func Execute() {
 }
 
 func init() {
-	rootCmd.AddCommand(runCmd)
-	rootCmd.AddCommand(itCmd)
+	rootCmd.AddCommand(serveCmd)
+	rootCmd.AddCommand(testCmd)
 }

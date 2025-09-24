@@ -1,16 +1,17 @@
 package cmd
 
 import (
-	"github.com/marcbran/yokai/internal/run"
+	"strings"
+
+	"github.com/marcbran/yokai/internal/serve"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"strings"
 )
 
-var runCmd = &cobra.Command{
-	Use:   "run",
-	Short: "Runs the Yokai application",
+var serveCmd = &cobra.Command{
+	Use:   "serve",
+	Short: "Serves the Yokai application",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		log.SetFormatter(&log.JSONFormatter{})
 		configPath, err := cmd.Flags().GetString("config")
@@ -21,15 +22,15 @@ var runCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		return run.Run(cmd.Context(), config)
+		return serve.Serve(cmd.Context(), config)
 	},
 }
 
 func init() {
-	runCmd.Flags().StringP("config", "c", "", "Path to config file")
+	serveCmd.Flags().StringP("config", "c", "", "Path to config file")
 }
 
-func loadConfig(configPath string) (*run.Config, error) {
+func loadConfig(configPath string) (*serve.Config, error) {
 	v := viper.New()
 
 	v.SetDefault("mqtt.client_id", "yokai")
@@ -55,7 +56,7 @@ func loadConfig(configPath string) (*run.Config, error) {
 	_ = v.BindEnv("app.config")
 	_ = v.BindEnv("app.vendor")
 
-	var cfg run.Config
+	var cfg serve.Config
 	err := v.Unmarshal(&cfg)
 	if err != nil {
 		return nil, err
