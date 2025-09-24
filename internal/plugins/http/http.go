@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 
 	"github.com/gorilla/websocket"
@@ -51,6 +52,8 @@ func runHttpServer(
 		mux.HandleFunc("/"+key, handleGet(model, key))
 		mux.HandleFunc("/ws/"+key, handleWs(model, key, broker))
 	}
+
+	mux.HandleFunc("/", handleWildcardPost(broker))
 
 	server := &http.Server{
 		Addr:    fmt.Sprintf(":%d", config.Port),
@@ -181,5 +184,35 @@ func handleWs(model run.Model, key run.Key, broker run.Broker) func(w http.Respo
 				WithField("key", key).
 				Error("websocket connection error")
 		}
+	}
+}
+
+func handleWildcardPost(broker run.Broker) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		topic := r.URL.Path
+		if topic == "/" {
+			http.Error(w, "Bad request", http.StatusBadRequest)
+			return
+		}
+
+		topic = topic[1:]
+
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			log.WithError(err).
+				WithField("topic", topic).
+				Error("failed to read request body")
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		broker.Publish(topic, string(body))
+
+		w.WriteHeader(http.StatusOK)
 	}
 }
