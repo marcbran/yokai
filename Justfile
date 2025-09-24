@@ -15,15 +15,10 @@ build-dev:
     set -eu
     goreleaser release --snapshot --clean --config .goreleaser.dev.yaml
 
-it: build-dev
+dev target="base-mqtt":
     #!/usr/bin/env bash
     set -eu
-    ./dist/darwin_darwin_arm64_v8.0/yokai it
-
-dev:
-    #!/usr/bin/env bash
-    set -eu
-    docker compose -f debug/docker-compose.yml up -d
+    docker compose -f dev/{{target}}/docker-compose.yml up -d
 
 check-git-state:
     #!/usr/bin/env bash

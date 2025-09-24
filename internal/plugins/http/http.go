@@ -14,7 +14,8 @@ import (
 )
 
 type Config struct {
-	Port int `mapstructure:"port"`
+	Enabled bool `mapstructure:"enabled"`
+	Port    int  `mapstructure:"port"`
 }
 
 type HttpPlugin struct {
@@ -28,11 +29,16 @@ func NewPlugin(config Config) *HttpPlugin {
 }
 
 func (h *HttpPlugin) Start(ctx context.Context, g *errgroup.Group, registry run.Registry, source run.Broker, sink run.Broker) {
+	if !h.config.Enabled {
+		log.Info("HTTP plugin is disabled")
+		return
+	}
+
 	g.Go(func() error {
 		httpCtx, httpCancel := context.WithCancel(ctx)
 		defer httpCancel()
 
-		err := runHttpServer(httpCtx, h.config, registry.KeyToModel, sink)
+		err := runHttpServer(httpCtx, h.config, registry.KeyToModel, source, sink)
 		if err != nil && !errors.Is(err, context.Canceled) {
 			return err
 		}
@@ -44,16 +50,17 @@ func runHttpServer(
 	ctx context.Context,
 	config Config,
 	keyToModel map[run.Key]run.Model,
-	broker run.Broker,
+	source run.Broker,
+	sink run.Broker,
 ) error {
 	mux := http.NewServeMux()
 
 	for key, model := range keyToModel {
 		mux.HandleFunc("/"+key, handleGet(model, key))
-		mux.HandleFunc("/ws/"+key, handleWs(model, key, broker))
+		mux.HandleFunc("/ws/"+key, handleWs(model, key, sink))
 	}
 
-	mux.HandleFunc("/", handleWildcardPost(broker))
+	mux.HandleFunc("/", handleWildcardPost(source))
 
 	server := &http.Server{
 		Addr:    fmt.Sprintf(":%d", config.Port),

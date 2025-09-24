@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"path/filepath"
 	"strings"
 
 	"github.com/marcbran/yokai/internal/serve"
@@ -33,10 +34,14 @@ func init() {
 func loadConfig(configPath string) (*serve.Config, error) {
 	v := viper.New()
 
+	v.SetDefault("mqtt.enabled", false)
 	v.SetDefault("mqtt.client_id", "yokai")
 	v.SetDefault("mqtt.keep_alive", "2s")
 	v.SetDefault("mqtt.ping_timeout", "1s")
+	v.SetDefault("http.enabled", false)
 	v.SetDefault("http.port", 8000)
+	v.SetDefault("app.config", "config.jsonnet")
+	v.SetDefault("app.vendor", []string{})
 
 	v.SetConfigName("config")
 	v.SetConfigType("yaml")
@@ -60,6 +65,17 @@ func loadConfig(configPath string) (*serve.Config, error) {
 	err := v.Unmarshal(&cfg)
 	if err != nil {
 		return nil, err
+	}
+
+	if cfg.App.Config != "" && !filepath.IsAbs(cfg.App.Config) {
+		cfg.App.Config = filepath.Join(configPath, cfg.App.Config)
+	}
+	if cfg.App.Vendor != nil {
+		for i, vendorPath := range cfg.App.Vendor {
+			if !filepath.IsAbs(vendorPath) {
+				cfg.App.Vendor[i] = filepath.Join(configPath, vendorPath)
+			}
+		}
 	}
 
 	return &cfg, nil
