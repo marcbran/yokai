@@ -12,6 +12,7 @@ import (
 )
 
 type Config struct {
+	Enabled     bool          `mapstructure:"enabled"`
 	Broker      string        `mapstructure:"broker"`
 	ClientId    string        `mapstructure:"clientId"`
 	KeepAlive   time.Duration `mapstructure:"keep_alive"`
@@ -29,6 +30,11 @@ func NewPlugin(config Config) *MqttPlugin {
 }
 
 func (m *MqttPlugin) Start(ctx context.Context, g *errgroup.Group, registry run.Registry, source run.Broker, sink run.Broker) {
+	if !m.config.Enabled {
+		log.Info("MQTT plugin is disabled")
+		return
+	}
+
 	g.Go(func() error {
 		mqttCtx, mqttCancel := context.WithCancel(ctx)
 		defer mqttCancel()
