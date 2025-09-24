@@ -117,7 +117,14 @@ func handleWs(model run.Model, key run.Key, broker run.Broker) func(w http.Respo
 				Error("failed to upgrade connection to websocket")
 			return
 		}
-		defer conn.Close()
+		defer func() {
+			err := conn.Close()
+			if err != nil {
+				log.WithError(err).
+					WithField("key", key).
+					Error("failed to close websocket connection")
+			}
+		}()
 
 		g, gCtx := errgroup.WithContext(r.Context())
 		g.Go(func() error {
