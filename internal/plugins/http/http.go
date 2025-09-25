@@ -118,7 +118,7 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-func handleWs(model run.Model, key run.Key, broker run.Broker) func(w http.ResponseWriter, r *http.Request) {
+func handleWs(model run.Model, key run.Key, source run.Broker) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		conn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
@@ -171,17 +171,7 @@ func handleWs(model run.Model, key run.Key, broker run.Broker) func(w http.Respo
 					return err
 				}
 
-				updates, err := model.Update(gCtx, "viewEvents", string(message))
-				if err != nil {
-					log.WithError(err).
-						WithField("key", key).
-						Error("failed to handle websocket message")
-					continue
-				}
-
-				for topic, payload := range updates {
-					broker.Publish(topic, payload)
-				}
+				source.Publish(fmt.Sprintf("%s/%s", key, "viewEvents"), string(message))
 			}
 		})
 
@@ -194,7 +184,7 @@ func handleWs(model run.Model, key run.Key, broker run.Broker) func(w http.Respo
 	}
 }
 
-func handleWildcardPost(broker run.Broker) func(w http.ResponseWriter, r *http.Request) {
+func handleWildcardPost(source run.Broker) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -218,7 +208,7 @@ func handleWildcardPost(broker run.Broker) func(w http.ResponseWriter, r *http.R
 			return
 		}
 
-		broker.Publish(topic, string(body))
+		source.Publish(topic, string(body))
 
 		w.WriteHeader(http.StatusOK)
 	}

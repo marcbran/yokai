@@ -39,7 +39,7 @@ func (m *MqttPlugin) Start(ctx context.Context, g *errgroup.Group, registry run.
 		mqttCtx, mqttCancel := context.WithCancel(ctx)
 		defer mqttCancel()
 
-		err := runMqttSub(mqttCtx, m.config, registry.TopicToModels, sink)
+		err := runMqttSub(mqttCtx, m.config, registry.TopicToModels, source)
 		if err != nil && !errors.Is(err, context.Canceled) {
 			return err
 		}
@@ -49,7 +49,7 @@ func (m *MqttPlugin) Start(ctx context.Context, g *errgroup.Group, registry run.
 		mqttCtx, mqttCancel := context.WithCancel(ctx)
 		defer mqttCancel()
 
-		err := runMqttPub(mqttCtx, m.config, source)
+		err := runMqttPub(mqttCtx, m.config, sink)
 		if err != nil && !errors.Is(err, context.Canceled) {
 			return err
 		}
@@ -61,7 +61,7 @@ func runMqttSub(
 	ctx context.Context,
 	config Config,
 	topicToModels map[run.Topic][]run.Model,
-	broker run.Broker,
+	source run.Broker,
 ) error {
 	client := mqtt.NewClient(mqtt.NewClientOptions().
 		AddBroker(config.Broker).
@@ -87,42 +87,19 @@ func runMqttSub(
 		Info("subscribing to topics")
 
 	g, gCtx := errgroup.WithContext(ctx)
-	callback := func(client mqtt.Client, msg mqtt.Message) {
+	err = wait(ctx, client.SubscribeMultiple(filters, func(client mqtt.Client, msg mqtt.Message) {
 		if gCtx.Err() != nil {
 			return
 		}
 
-		callbackTopic := msg.Topic()
-		callbackInput := string(msg.Payload())
-		log.WithField("topic", callbackTopic).
-			WithField("input", callbackInput).
+		topic := msg.Topic()
+		payload := string(msg.Payload())
+		log.WithField("topic", topic).
+			WithField("payload", payload).
 			Info("received message from topic")
 
-		models := topicToModels[callbackTopic]
-		for _, model := range models {
-			topic := msg.Topic()
-			input := string(msg.Payload())
-			g.Go(func() error {
-				log.WithField("topic", topic).
-					WithField("input", input).
-					Debug("handling message")
-				updates, err := model.Update(gCtx, topic, input)
-				if err != nil {
-					log.WithError(err).
-						WithField("topic", topic).
-						WithField("input", input).
-						Error("failed to handle message")
-					return err
-				}
-
-				for topic, payload := range updates {
-					broker.Publish(topic, payload)
-				}
-				return nil
-			})
-		}
-	}
-	err = wait(ctx, client.SubscribeMultiple(filters, callback))
+		source.Publish(topic, payload)
+	}))
 	if err != nil {
 		return err
 	}
@@ -139,7 +116,7 @@ func runMqttSub(
 	return g.Wait()
 }
 
-func runMqttPub(ctx context.Context, config Config, broker run.Broker) error {
+func runMqttPub(ctx context.Context, config Config, sink run.Broker) error {
 	client := mqtt.NewClient(mqtt.NewClientOptions().
 		AddBroker(config.Broker).
 		SetClientID(config.ClientId).
@@ -153,7 +130,7 @@ func runMqttPub(ctx context.Context, config Config, broker run.Broker) error {
 
 	defer client.Disconnect(250)
 
-	ch, unsubscribe := broker.SubscribeAll()
+	ch, unsubscribe := sink.SubscribeAll()
 	defer unsubscribe()
 
 	g, gCtx := errgroup.WithContext(ctx)
