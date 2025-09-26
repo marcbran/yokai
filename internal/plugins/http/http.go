@@ -28,7 +28,7 @@ func NewPlugin(config Config) *HttpPlugin {
 	}
 }
 
-func (h *HttpPlugin) Start(ctx context.Context, g *errgroup.Group, registry run.Registry, source run.Broker, sink run.Broker) {
+func (h *HttpPlugin) Start(ctx context.Context, g *errgroup.Group, registry run.Registry, source run.Broker, view run.Broker, sink run.Broker) {
 	if !h.config.Enabled {
 		log.Info("HTTP plugin is disabled")
 		return
@@ -38,7 +38,7 @@ func (h *HttpPlugin) Start(ctx context.Context, g *errgroup.Group, registry run.
 		httpCtx, httpCancel := context.WithCancel(ctx)
 		defer httpCancel()
 
-		err := runHttpServer(httpCtx, h.config, registry.KeyToModel, source, sink)
+		err := runHttpServer(httpCtx, h.config, registry.KeyToModel, source, view)
 		if err != nil && !errors.Is(err, context.Canceled) {
 			return err
 		}
@@ -51,13 +51,13 @@ func runHttpServer(
 	config Config,
 	keyToModel map[run.Key]run.Model,
 	source run.Broker,
-	sink run.Broker,
+	view run.Broker,
 ) error {
 	mux := http.NewServeMux()
 
 	for key, model := range keyToModel {
 		mux.HandleFunc("/"+key, handleGet(model, key))
-		mux.HandleFunc("/ws/"+key, handleWs(model, key, sink))
+		mux.HandleFunc("/ws/"+key, handleWs(model, key, source, view))
 	}
 
 	mux.HandleFunc("/", handleWildcardPost(source))
@@ -118,7 +118,7 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-func handleWs(model run.Model, key run.Key, source run.Broker) func(w http.ResponseWriter, r *http.Request) {
+func handleWs(model run.Model, key run.Key, source run.Broker, view run.Broker) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		conn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
@@ -138,7 +138,7 @@ func handleWs(model run.Model, key run.Key, source run.Broker) func(w http.Respo
 
 		g, gCtx := errgroup.WithContext(r.Context())
 		g.Go(func() error {
-			views, unsubscribe := model.SubscribeView()
+			views, unsubscribe := view.Subscribe(key)
 			defer unsubscribe()
 
 			for {

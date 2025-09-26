@@ -25,7 +25,7 @@ func (i *InoutPlugin) Outputs() <-chan run.TopicPayload {
 	return i.outputs
 }
 
-func (i *InoutPlugin) Start(ctx context.Context, g *errgroup.Group, registry run.Registry, source run.Broker, sink run.Broker) {
+func (i *InoutPlugin) Start(ctx context.Context, g *errgroup.Group, registry run.Registry, source run.Broker, view run.Broker, sink run.Broker) {
 	g.Go(func() error {
 		inCtx, inCancel := context.WithCancel(ctx)
 		defer inCancel()

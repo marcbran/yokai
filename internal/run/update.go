@@ -14,12 +14,12 @@ func NewUpdaterPlugin() *UpdaterPlugin {
 	return &UpdaterPlugin{}
 }
 
-func (u *UpdaterPlugin) Start(ctx context.Context, g *errgroup.Group, registry Registry, source Broker, sink Broker) {
+func (u *UpdaterPlugin) Start(ctx context.Context, g *errgroup.Group, registry Registry, source Broker, view Broker, sink Broker) {
 	g.Go(func() error {
 		updaterCtx, updaterCancel := context.WithCancel(ctx)
 		defer updaterCancel()
 
-		err := runUpdater(updaterCtx, registry.TopicToModels, source, sink)
+		err := runUpdater(updaterCtx, registry.TopicToModels, source, view, sink)
 		if err != nil && !errors.Is(err, context.Canceled) {
 			return err
 		}
@@ -31,6 +31,7 @@ func runUpdater(
 	ctx context.Context,
 	topicToModels map[Topic][]Model,
 	source Broker,
+	view Broker,
 	sink Broker,
 ) error {
 	g, gCtx := errgroup.WithContext(ctx)
@@ -56,6 +57,7 @@ func runUpdater(
 						WithField("payload", payload).
 						Info("received message from topic")
 
+					var allViews []TopicPayload
 					var allCommands []TopicPayload
 
 					for _, model := range models {
@@ -67,13 +69,32 @@ func runUpdater(
 								Error("failed to handle message")
 							continue
 						}
-
 						for topic, payload := range commands {
 							allCommands = append(allCommands, TopicPayload{
 								Topic:   topic,
 								Payload: payload,
 							})
 						}
+
+						view, err := model.View(gCtx)
+						if err != nil {
+							log.WithError(err).
+								WithField("topic", topic).
+								WithField("payload", payload).
+								Error("failed to render view")
+							continue
+						}
+						allViews = append(allViews, TopicPayload{
+							Topic:   model.Key(),
+							Payload: view,
+						})
+					}
+
+					for _, v := range allViews {
+						log.WithField("key", v.Topic).
+							WithField("view", v.Payload).
+							Info("publishing view to key")
+						view.Publish(v.Topic, v.Payload)
 					}
 
 					for _, cmd := range allCommands {
