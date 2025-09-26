@@ -22,4 +22,6 @@ func Execute() {
 func init() {
 	rootCmd.AddCommand(serveCmd)
 	rootCmd.AddCommand(testCmd)
+	rootCmd.AddCommand(postCmd)
+	rootCmd.AddCommand(getCmd)
 }
