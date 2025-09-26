@@ -36,13 +36,13 @@ func NewRegistry() Registry {
 }
 
 type Plugin interface {
-	Start(ctx context.Context, g *errgroup.Group, registry Registry, source Broker, sink Broker)
+	Start(ctx context.Context, g *errgroup.Group, registry Registry, source Broker, view Broker, sink Broker)
 }
 
 type Model interface {
+	Key() string
 	Update(ctx context.Context, topic Topic, payload Payload) (map[Topic]Payload, error)
 	View(ctx context.Context) (string, error)
-	SubscribeView() (<-chan string, func())
 }
 
 type Command interface {

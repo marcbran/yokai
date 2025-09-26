@@ -12,11 +12,12 @@ func Run(ctx context.Context, registration Registration, plugins []Plugin) error
 		return err
 	}
 	source := NewBroker()
+	view := NewBroker()
 	sink := NewBroker()
 
 	g, gCtx := errgroup.WithContext(ctx)
 	for _, plugin := range plugins {
-		plugin.Start(gCtx, g, registry, source, sink)
+		plugin.Start(gCtx, g, registry, source, view, sink)
 	}
 
 	return g.Wait()

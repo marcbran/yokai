@@ -29,7 +29,7 @@ func NewPlugin(config Config) *MqttPlugin {
 	}
 }
 
-func (m *MqttPlugin) Start(ctx context.Context, g *errgroup.Group, registry run.Registry, source run.Broker, sink run.Broker) {
+func (m *MqttPlugin) Start(ctx context.Context, g *errgroup.Group, registry run.Registry, source run.Broker, view run.Broker, sink run.Broker) {
 	if !m.config.Enabled {
 		log.Info("MQTT plugin is disabled")
 		return
