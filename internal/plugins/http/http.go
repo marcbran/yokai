@@ -14,21 +14,23 @@ import (
 )
 
 type Config struct {
-	Enabled bool `mapstructure:"enabled"`
-	Port    int  `mapstructure:"port"`
+	Enabled  bool   `mapstructure:"enabled"`
+	Scheme   string `mapstructure:"scheme"`
+	Hostname string `mapstructure:"hostname"`
+	Port     int    `mapstructure:"port"`
 }
 
-type HttpPlugin struct {
+type Plugin struct {
 	config Config
 }
 
-func NewPlugin(config Config) *HttpPlugin {
-	return &HttpPlugin{
+func NewPlugin(config Config) *Plugin {
+	return &Plugin{
 		config: config,
 	}
 }
 
-func (h *HttpPlugin) Start(ctx context.Context, g *errgroup.Group, registry run.Registry, source run.Broker, view run.Broker, sink run.Broker) {
+func (h *Plugin) Start(ctx context.Context, g *errgroup.Group, registry run.Registry, source run.Broker, view run.Broker, sink run.Broker) {
 	if !h.config.Enabled {
 		log.Info("HTTP plugin is disabled")
 		return

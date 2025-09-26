@@ -15,6 +15,12 @@ build-dev:
     set -eu
     goreleaser release --snapshot --clean --config .goreleaser.dev.yaml
 
+build-go:
+	go build -v ./...
+
+install: build-go
+	go install -v ./...
+
 dev target="base-mqtt":
     #!/usr/bin/env bash
     set -eu

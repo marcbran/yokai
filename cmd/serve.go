@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -32,6 +33,12 @@ func init() {
 }
 
 func loadConfig(configPath string) (*serve.Config, error) {
+	if configPath == "" {
+		if envPath := os.Getenv("YOKAI_CONFIG_PATH"); envPath != "" {
+			configPath = envPath
+		}
+	}
+
 	v := viper.New()
 
 	v.SetDefault("mqtt.enabled", false)
@@ -39,6 +46,8 @@ func loadConfig(configPath string) (*serve.Config, error) {
 	v.SetDefault("mqtt.keep_alive", "2s")
 	v.SetDefault("mqtt.ping_timeout", "1s")
 	v.SetDefault("http.enabled", false)
+	v.SetDefault("http.scheme", "http")
+	v.SetDefault("http.hostname", "localhost")
 	v.SetDefault("http.port", 8000)
 	v.SetDefault("app.config", "config.jsonnet")
 	v.SetDefault("app.vendor", []string{})
@@ -57,6 +66,8 @@ func loadConfig(configPath string) (*serve.Config, error) {
 	_ = v.BindEnv("mqtt.client_id")
 	_ = v.BindEnv("mqtt.keep_alive")
 	_ = v.BindEnv("mqtt.ping_timeout")
+	_ = v.BindEnv("http.scheme")
+	_ = v.BindEnv("http.hostname")
 	_ = v.BindEnv("http.port")
 	_ = v.BindEnv("app.config")
 	_ = v.BindEnv("app.vendor")
